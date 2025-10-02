@@ -1,0 +1,5 @@
+{
+  "name": " kul-ai-studio-pro v4",
+  "description": "A professional AI batch image generator that runs entirely in the browser, allowing users to create multiple high-quality images of the same subject in various contexts, outfits, and poses with fine-grained control.",
+  "requestFramePermissions": []
+}
