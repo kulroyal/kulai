@@ -483,7 +483,7 @@ Sự nhất quán và sao chép chính xác khuôn mặt từ ảnh tham khảo 
         }
         
         const response: GenerateContentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-image-preview',
             contents: { parts },
             config: {
                 responseModalities: [Modality.IMAGE, Modality.TEXT],
