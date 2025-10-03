@@ -88,7 +88,6 @@ interface UserProvidedPrompts {
 }
 
 interface AppState {
-    apiKey: string | null;
     backgrounds: ImageFile[];
     referenceFace: ImageFile | null;
     additionalFaces: ImageFile[];
@@ -106,7 +105,6 @@ interface AppState {
 }
 
 type Action =
-  | { type: 'SET_API_KEY'; payload: string | null }
   | { type: 'UPDATE_SETTINGS'; payload: { key: keyof Settings; value: Settings[keyof Settings] } }
   | { type: 'ADD_IMAGE_FILES'; payload: { type: 'backgrounds' | 'referenceFace' | 'additionalFaces' | 'outfit' | 'quickCompositeBackground'; files: ImageFile[] } }
   | { type: 'REMOVE_IMAGE_FILE'; payload: { type: keyof AppState; id: string } }
@@ -130,8 +128,6 @@ type Action =
 
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
-    case 'SET_API_KEY':
-        return { ...state, apiKey: action.payload };
     case 'UPDATE_SETTINGS':
         // A bit of type magic to handle nested settings like artDirection
         if (typeof action.payload.value === 'object' && !Array.isArray(action.payload.value) && action.payload.value !== null) {
@@ -483,7 +479,7 @@ Sự nhất quán và sao chép chính xác khuôn mặt từ ảnh tham khảo 
         }
         
         const response: GenerateContentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: {
                 responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -508,7 +504,7 @@ const isolateSubject = async (ai: GoogleGenAI, subjectImageSrc: string): Promise
         const prompt = "Remove the background from this image completely. The output must be the person with a transparent background. Do not add any shadows.";
 
         const response: GenerateContentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-2.5-flash-image',
             contents: {
                 parts: [{ text: prompt }, { inlineData: { data: base64Data, mimeType } }],
             },
@@ -601,7 +597,7 @@ ${artDirection.additionalPrompt ? `- Yêu cầu thêm: ${artDirection.additional
 
 
         const response: GenerateContentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: {
                 responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -625,7 +621,7 @@ const cleanBackground = async (ai: GoogleGenAI, backgroundFile: File): Promise<{
 - Một phần hình ảnh (image part) chứa bối cảnh đã được làm sạch.`;
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: {
             parts: [
                 { inlineData: { data: bgBase64, mimeType: backgroundFile.type } },
@@ -709,7 +705,7 @@ const generateVariant = async (
     ];
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -722,58 +718,6 @@ const generateVariant = async (
 // =================================================================================
 // COMPONENTS
 // =================================================================================
-
-const ApiKeyModal: React.FC<{ onSave: (key: string) => void }> = ({ onSave }) => {
-    const [apiKeyInput, setApiKeyInput] = useState('');
-    const [error, setError] = useState('');
-
-    const handleSave = () => {
-        if (apiKeyInput.trim().length < 10) { // Basic validation
-            setError('Vui lòng nhập một API Key hợp lệ.');
-            return;
-        }
-        setError('');
-        onSave(apiKeyInput.trim());
-    };
-
-    return (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-w-lg w-full p-8 text-center">
-                <div className="flex justify-center mb-4">
-                    <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H5v-2H3v-2H1.75a1.75 1.75 0 01-1.75-1.75V13a1.75 1.75 0 011.75-1.75H5V9h2V7h2v2h2V7a2 2 0 012-2zM9 9a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H9z" />
-                        </svg>
-                    </div>
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Yêu cầu Google Gemini API Key</h2>
-                <p className="text-gray-400 mb-6">
-                    Để sử dụng ứng dụng, vui lòng cung cấp API Key của riêng bạn. Ứng dụng này chạy hoàn toàn trên trình duyệt và key của bạn sẽ được lưu trữ an toàn tại đây.
-                </p>
-                <div className="space-y-4">
-                    <input
-                        type="password"
-                        value={apiKeyInput}
-                        onChange={(e) => setApiKeyInput(e.target.value)}
-                        placeholder="Dán API Key của bạn vào đây"
-                        className="w-full bg-gray-700 border border-gray-600 text-white rounded-md p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-center"
-                    />
-                    {error && <p className="text-red-400 text-sm">{error}</p>}
-                    <button
-                        onClick={handleSave}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 text-lg flex items-center justify-center shadow-lg hover:shadow-indigo-500/50"
-                    >
-                        Lưu và Bắt đầu
-                    </button>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="block text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
-                        Lấy API Key từ Google AI Studio
-                    </a>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 
 const PromptDisplay: React.FC<{ prompt: string | null; title: string; onSave: () => void }> = React.memo(({ prompt, title, onSave }) => {
     const [copied, setCopied] = useState(false);
@@ -801,7 +745,7 @@ const PromptDisplay: React.FC<{ prompt: string | null; title: string; onSave: ()
                         title="Sao chép prompt"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                            <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2-2H9a2 2 0 01-2-2V9z" />
                             <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h6a2 2 0 00-2-2H5z" />
                         </svg>
                         {copied ? 'Đã chép' : 'Sao chép'}
@@ -985,7 +929,7 @@ const ResultsGallery: React.FC<ResultsGalleryProps> = React.memo(({ images, onIm
                             return <ErrorCard key={image.id} error={image.error || 'Lỗi không xác định'} />;
                         }
                         return (
-                            <div key={image.id} className="relative group cursor-pointer aspect-square" onClick={() => onImageClick(image)}>
+                            <div key={image.id} className="relative group cursor-pointer aspect-square fade-in-image" onClick={() => onImageClick(image)}>
                                 <img src={image.src} alt="Generated result" className="rounded-lg object-cover w-full h-full transition-transform duration-300 group-hover:scale-105" />
                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-all duration-300 flex items-center justify-center rounded-lg">
                                     <p className="text-white opacity-0 group-hover:opacity-100 font-semibold transform group-hover:translate-y-0 translate-y-2 transition-all">Xem chi tiết</p>
@@ -1333,15 +1277,17 @@ const CollapsibleSection: React.FC<{title: string; number: number; isOpen: boole
                  <span className="flex items-center justify-center w-6 h-6 bg-indigo-600 rounded-full text-sm font-bold">{number}</span>
                 {title}
             </h3>
-            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
         </button>
-        {isOpen && (
-            <div className="p-4 border-t border-gray-700">
-                {children}
+        <div className={`grid transition-all duration-500 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+            <div className="overflow-hidden">
+                <div className="p-4 border-t border-gray-700">
+                    {children}
+                </div>
             </div>
-        )}
+        </div>
     </div>
 ));
 
@@ -1522,7 +1468,6 @@ const InputPanel: React.FC<InputPanelProps> = React.memo(({
 // =================================================================================
 
 const initialAppState: AppState = {
-    apiKey: null,
     backgrounds: [],
     referenceFace: null,
     additionalFaces: [],
@@ -1563,19 +1508,6 @@ const App: React.FC = () => {
     const [state, dispatch] = useReducer(appReducer, initialAppState);
     const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
 
-    useEffect(() => {
-        // Load API key from localStorage on initial render
-        const savedApiKey = localStorage.getItem('gemini-api-key');
-        if (savedApiKey) {
-            dispatch({ type: 'SET_API_KEY', payload: savedApiKey });
-        }
-    }, []);
-
-    const handleSaveApiKey = useCallback((key: string) => {
-        localStorage.setItem('gemini-api-key', key);
-        dispatch({ type: 'SET_API_KEY', payload: key });
-    }, []);
-
     const addImageFiles = useCallback(async (files: FileList, type: 'backgrounds' | 'referenceFace' | 'additionalFaces' | 'outfit' | 'quickCompositeBackground') => {
         const imageFilePromises = Array.from(files).map(async (file): Promise<ImageFile> => {
             const preview = await createImagePreview(file, 200, 200);
@@ -1594,13 +1526,12 @@ const App: React.FC = () => {
     }, []);
 
     const handleCleanBackground = useCallback(async (backgroundId: string) => {
-        if (!state.apiKey) return;
         const backgroundToClean = state.backgrounds.find(bg => bg.id === backgroundId);
         if (!backgroundToClean) return;
 
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
-            const ai = new GoogleGenAI({ apiKey: state.apiKey });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const { cleanedImage: cleanedImageBase64, extractedPose } = await cleanBackground(ai, backgroundToClean.originalFile);
             
             const newFile = await (await fetch(cleanedImageBase64)).blob();
@@ -1621,11 +1552,10 @@ const App: React.FC = () => {
             const message = error instanceof Error ? error.message : "Đã xảy ra lỗi không xác định khi làm sạch nền.";
             dispatch({ type: 'SET_ERROR', payload: message });
         }
-    }, [state.backgrounds, state.apiKey]);
+    }, [state.backgrounds]);
     
     const handleGenerateImages = useCallback(async () => {
-        const { referenceFace, outfit, backgrounds, isGenerating, userProvidedPrompts, apiKey } = state;
-        if (!apiKey) return;
+        const { referenceFace, outfit, backgrounds, isGenerating, userProvidedPrompts } = state;
 
         const isFaceReady = referenceFace || userProvidedPrompts.face.trim();
         const isOutfitReady = outfit || userProvidedPrompts.outfit.trim();
@@ -1642,7 +1572,7 @@ const App: React.FC = () => {
     
         dispatch({ type: 'START_GENERATION', payload: { total: totalSteps } });
     
-        const ai = new GoogleGenAI({ apiKey: apiKey });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
         try {
             let currentStep = 1;
@@ -1759,11 +1689,6 @@ const App: React.FC = () => {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : `Lỗi nghiêm trọng: ${String(error)}`;
             console.error("Lỗi trong quá trình tạo ảnh:", error);
-            if (errorMessage.includes('API Key không hợp lệ')) {
-                // Clear the bad key and force re-entry
-                localStorage.removeItem('gemini-api-key');
-                dispatch({ type: 'SET_API_KEY', payload: null });
-            }
             dispatch({ type: 'SET_ERROR', payload: errorMessage });
         } finally {
             dispatch({ type: 'FINISH_GENERATION' });
@@ -1771,7 +1696,6 @@ const App: React.FC = () => {
     }, [state]);
 
     const handleGenerateVariant = useCallback(async (baseImage: GeneratedImage, newPose: string) => {
-        if (!state.apiKey) return;
         if (!newPose.trim()) {
             alert("Vui lòng cung cấp mô tả tư thế mới.");
             return;
@@ -1781,7 +1705,7 @@ const App: React.FC = () => {
         setSelectedImage(null); // Close modal
 
         try {
-             const ai = new GoogleGenAI({ apiKey: state.apiKey });
+             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
              const variantBase64 = await generateVariant(ai, baseImage.src, newPose);
              const newImage: GeneratedImage = { 
                 id: `var-${Date.now()}`, 
@@ -1795,14 +1719,14 @@ const App: React.FC = () => {
             const message = error instanceof Error ? error.message : "Tạo biến thể thất bại.";
             dispatch({ type: 'SET_ERROR', payload: message });
         }
-    }, [state.apiKey]);
+    }, []);
 
     const handleCleanQuickCompositeBackground = useCallback(async () => {
-        if (!state.apiKey || !state.quickCompositeBackground) return;
+        if (!state.quickCompositeBackground) return;
     
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
-            const ai = new GoogleGenAI({ apiKey: state.apiKey });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const { cleanedImage: cleanedImageBase64, extractedPose } = await cleanBackground(ai, state.quickCompositeBackground.originalFile);
             
             const newFile = await (await fetch(cleanedImageBase64)).blob();
@@ -1823,15 +1747,15 @@ const App: React.FC = () => {
             const message = error instanceof Error ? error.message : "Đã xảy ra lỗi không xác định khi làm sạch nền.";
             dispatch({ type: 'SET_ERROR', payload: message });
         }
-    }, [state.quickCompositeBackground, state.apiKey]);
+    }, [state.quickCompositeBackground]);
 
     const handleQuickComposite = useCallback(async () => {
-        if (!state.apiKey || !state.isolatedSubjectSrc || !state.quickCompositeBackground || state.isGenerating || state.isQuickCompositing) {
+        if (!state.isolatedSubjectSrc || !state.quickCompositeBackground || state.isGenerating || state.isQuickCompositing) {
             return;
         }
         dispatch({ type: 'SET_QUICK_COMPOSITING', payload: true });
         try {
-            const ai = new GoogleGenAI({ apiKey: state.apiKey });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             const { width, height } = await getImageDimensions(state.quickCompositeBackground.originalFile);
     
@@ -1858,15 +1782,11 @@ const App: React.FC = () => {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định";
             console.error("Lỗi khi ghép ảnh nhanh:", errorMessage);
-            if (errorMessage.includes('API Key không hợp lệ')) {
-                localStorage.removeItem('gemini-api-key');
-                dispatch({ type: 'SET_API_KEY', payload: null });
-            }
             dispatch({ type: 'SET_ERROR', payload: `Lỗi ghép ảnh nhanh: ${errorMessage}` });
         } finally {
             dispatch({ type: 'SET_QUICK_COMPOSITING', payload: false });
         }
-    }, [state.apiKey, state.isolatedSubjectSrc, state.quickCompositeBackground, state.settings.artDirection, state.isGenerating, state.isQuickCompositing, state.referenceFace]);
+    }, [state.isolatedSubjectSrc, state.quickCompositeBackground, state.settings.artDirection, state.isGenerating, state.isQuickCompositing, state.referenceFace]);
     
     const handleSavePrompt = useCallback((text: string | null, type: 'face' | 'outfit') => {
         if (!text) return;
@@ -1895,10 +1815,6 @@ const App: React.FC = () => {
     }, []);
 
     const closeImageModal = useCallback(() => setSelectedImage(null), []);
-
-    if (!state.apiKey) {
-        return <ApiKeyModal onSave={handleSaveApiKey} />;
-    }
 
     return (
         <div className="min-h-screen bg-gray-900 text-gray-200 font-sans flex flex-col">
