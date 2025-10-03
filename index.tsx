@@ -1508,6 +1508,13 @@ const App: React.FC = () => {
     const [state, dispatch] = useReducer(appReducer, initialAppState);
     const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
 
+    useEffect(() => {
+        // Diagnostic check for API key on application load
+        if (!process.env.API_KEY || process.env.API_KEY === 'undefined') {
+            alert('Lỗi nghiêm trọng: API Key chưa được cấu hình. Vui lòng kiểm tra lại biến môi trường hoặc GitHub Secrets.');
+        }
+    }, []);
+
     const addImageFiles = useCallback(async (files: FileList, type: 'backgrounds' | 'referenceFace' | 'additionalFaces' | 'outfit' | 'quickCompositeBackground') => {
         const imageFilePromises = Array.from(files).map(async (file): Promise<ImageFile> => {
             const preview = await createImagePreview(file, 200, 200);
